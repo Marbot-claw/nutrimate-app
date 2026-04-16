@@ -7,7 +7,7 @@ export const getDatabaseConfig = (
   configService: ConfigService,
 ): TypeOrmModuleOptions => {
   const isProduction = configService.get<string>('NODE_ENV') === 'production';
-  
+
   return {
     type: 'postgres',
     host: configService.get<string>('DB_HOST', 'localhost'),
@@ -16,10 +16,8 @@ export const getDatabaseConfig = (
     password: configService.get<string>('DB_PASSWORD', 'postgres'),
     database: configService.get<string>('DB_NAME', 'nutrimate-db'),
     entities: [User, UserBodyProfile],
-    // Safety: only synchronize in non-production environments
-    synchronize: isProduction 
-      ? false 
-      : configService.get<string>('DB_SYNC', 'true') === 'true',
+    // Disable synchronize in production for safety
+    synchronize: configService.get<string>('DB_SYNC', isProduction ? 'false' : 'true') === 'true',
     logging: configService.get<string>('DB_LOGGING', 'true') === 'true',
     ssl: isProduction ? { rejectUnauthorized: false } : false,
   };

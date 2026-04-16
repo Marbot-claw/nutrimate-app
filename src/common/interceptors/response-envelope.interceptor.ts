@@ -54,12 +54,13 @@ export class ResponseEnvelopeInterceptor<T>
 
     return next.handle().pipe(
       map((data) => {
+        // Only wrap on successful responses (2xx); pass through on errors
         const statusCode: number = response.statusCode ?? 200;
         if (statusCode >= 400) {
           return data;
         }
 
-        // Prevent double wrapping if data already has the envelope structure
+        // If data is already wrapped (has status + code), pass through to avoid double-wrapping
         if (
           data &&
           typeof data === 'object' &&
@@ -69,6 +70,7 @@ export class ResponseEnvelopeInterceptor<T>
           return data;
         }
 
+        // Paginated shape: { items: T[], total: number, page?, limit? }
         if (isPaginatedShape(data)) {
           const page = Number(data.page ?? request.query?.page ?? 1);
           const limit = Number(data.limit ?? request.query?.limit ?? 10);
@@ -80,6 +82,7 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
+        // Plain array → use query params for page/limit, totalItems = data.length
         if (Array.isArray(data)) {
           const page = Math.max(1, Number(request.query?.page ?? 1));
           const limit = Math.max(1, Number(request.query?.limit ?? 10));
@@ -91,19 +94,16 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        if (
-          data === null ||
-          data === undefined ||
-          (typeof data === 'object' && Object.keys(data).length === 0 && !Array.isArray(data))
-        ) {
+        // Null / empty object → return empty array with pagination if expected, or just wrap
+        if (data === null || data === undefined) {
           return {
             status: 'success',
             code: statusCode,
-            data: [] as any,
-            pagination: buildPagination(1, 10, 0),
+            data: null as T,
           };
         }
 
+        // Single object — no pagination
         return {
           status: 'success',
           code: statusCode,

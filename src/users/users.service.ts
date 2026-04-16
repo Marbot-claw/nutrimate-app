@@ -18,20 +18,20 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // Optimized: Check both email and phone in a single query
-    const existing = await this.usersRepository.findOne({
-      where: [
-        ...(createUserDto.email ? [{ email: createUserDto.email }] : []),
-        ...(createUserDto.phone ? [{ phone: createUserDto.phone }] : []),
-      ],
-    });
+    const { email, phone } = createUserDto;
 
-    if (existing) {
-      if (createUserDto.email && existing.email === createUserDto.email) {
-        throw new ConflictException('Email already in use');
-      }
-      if (createUserDto.phone && existing.phone === createUserDto.phone) {
-        throw new ConflictException('Phone number already in use');
+    // Optimized check: check email and phone in a single query if both provided
+    if (email || phone) {
+      const existing = await this.usersRepository.findOne({
+        where: [
+          ...(email ? [{ email }] : []),
+          ...(phone ? [{ phone }] : []),
+        ],
+      });
+
+      if (existing) {
+        if (email && existing.email === email) throw new ConflictException('Email already in use');
+        if (phone && existing.phone === phone) throw new ConflictException('Phone number already in use');
       }
     }
 
@@ -81,25 +81,21 @@ export class UsersService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    // Check for unique constraints if email or phone is being updated
-    if (
-      (updateUserDto.email && updateUserDto.email !== user.email) ||
-      (updateUserDto.phone && updateUserDto.phone !== user.phone)
-    ) {
+    if (updateUserDto.email && updateUserDto.email !== user.email) {
       const existing = await this.usersRepository.findOne({
-        where: [
-          ...(updateUserDto.email ? [{ email: updateUserDto.email }] : []),
-          ...(updateUserDto.phone ? [{ phone: updateUserDto.phone }] : []),
-        ],
+        where: { email: updateUserDto.email },
       });
+      if (existing) {
+        throw new ConflictException('Email already in use');
+      }
+    }
 
-      if (existing && existing.id !== id) {
-        if (updateUserDto.email && existing.email === updateUserDto.email) {
-          throw new ConflictException('Email already in use');
-        }
-        if (updateUserDto.phone && existing.phone === updateUserDto.phone) {
-          throw new ConflictException('Phone number already in use');
-        }
+    if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
+      const existing = await this.usersRepository.findOne({
+        where: { phone: updateUserDto.phone },
+      });
+      if (existing) {
+        throw new ConflictException('Phone number already in use');
       }
     }
 
@@ -108,12 +104,16 @@ export class UsersService {
     }
 
     await this.usersRepository.update(id, updateUserDto);
-    return this.findOne(id);
+    const updated = await this.usersRepository.findOne({ where: { id } });
+    return updated!;
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.findOne(id);
-    await this.usersRepository.delete(user.id);
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.usersRepository.delete(id);
     return { message: `User ${id} deleted successfully` };
   }
 }
