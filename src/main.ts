@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+  const reflector = app.get(Reflector);
 
   // Global API prefix
   app.setGlobalPrefix('api');
@@ -22,7 +23,10 @@ async function bootstrap() {
     }),
   );
 
-  // Global response envelope interceptor (wraps all responses consistently)
+  // Global interceptors
+  // 1. ClassSerializerInterceptor: Automatically handles @Exclude() and @Expose() in entities/DTOs
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+  // 2. ResponseEnvelopeInterceptor: Wraps all responses consistently
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
 
   // Enable CORS

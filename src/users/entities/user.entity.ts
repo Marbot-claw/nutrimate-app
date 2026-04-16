@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -17,12 +18,13 @@ export class User {
   id: string;
 
   @Column({ unique: true, nullable: true })
-  email: string;
+  email: string | null;
 
   @Column({ unique: true, nullable: true })
-  phone: string;
+  phone: string | null;
 
   @Column()
+  @Exclude() // Automatically removed from plain objects by ClassSerializerInterceptor
   password: string;
 
   @Column()

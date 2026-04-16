@@ -9,6 +9,16 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+// Transformer to ensure decimal columns are returned as numbers in JS
+export class ColumnNumericTransformer {
+  to(data: number): number {
+    return data;
+  }
+  from(data: string): number {
+    return parseFloat(data);
+  }
+}
+
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',
@@ -34,10 +44,22 @@ export class UserBodyProfile {
   @Column({ name: 'user_id' })
   userId: string;
 
-  @Column({ name: 'height_cm', type: 'decimal', precision: 5, scale: 2 })
+  @Column({
+    name: 'height_cm',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    transformer: new ColumnNumericTransformer(),
+  })
   heightCm: number;
 
-  @Column({ name: 'weight_kg', type: 'decimal', precision: 5, scale: 2 })
+  @Column({
+    name: 'weight_kg',
+    type: 'decimal',
+    precision: 5,
+    scale: 2,
+    transformer: new ColumnNumericTransformer(),
+  })
   weightKg: number;
 
   @Column({ name: 'date_of_birth', type: 'date' })
