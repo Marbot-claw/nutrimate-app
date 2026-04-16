@@ -21,16 +21,9 @@ export interface ResponseEnvelope<T> {
   pagination?: PaginationMeta;
 }
 
-/**
- * Paginated shape convention:
- * Controllers that support pagination should return:
- *   { items: T[], total: number, page?: number, limit?: number }
- * The interceptor will detect this shape and build proper pagination.
- *
- * For plain arrays, pagination is built from query params (page, limit)
- * with totalItems = data.length (no DB total count available).
- */
-function isPaginatedShape(data: unknown): data is { items: unknown[]; total: number; page?: number; limit?: number } {
+function isPaginatedShape(
+  data: unknown,
+): data is { items: unknown[]; total: number; page?: number; limit?: number } {
   return (
     data !== null &&
     typeof data === 'object' &&
@@ -40,7 +33,11 @@ function isPaginatedShape(data: unknown): data is { items: unknown[]; total: num
   );
 }
 
-function buildPagination(currentPage: number, limit: number, total: number): PaginationMeta {
+function buildPagination(
+  currentPage: number,
+  limit: number,
+  total: number,
+): PaginationMeta {
   return {
     currentPage,
     itemsPerPage: limit,
@@ -63,13 +60,12 @@ export class ResponseEnvelopeInterceptor<T>
 
     return next.handle().pipe(
       map((data) => {
-        // Only wrap on successful responses (2xx); pass through on errors
         const statusCode: number = response.statusCode ?? 200;
         if (statusCode >= 400) {
           return data;
         }
 
-        // If data is already wrapped (has status + code), pass through to avoid double-wrapping
+        // Avoid double-wrapping
         if (
           data &&
           typeof data === 'object' &&
@@ -79,7 +75,7 @@ export class ResponseEnvelopeInterceptor<T>
           return data;
         }
 
-        // Paginated shape: { items: T[], total: number, page?, limit? }
+        // Paginated shape
         if (isPaginatedShape(data)) {
           const page = Number(data.page ?? request.query?.page ?? 1);
           const limit = Number(data.limit ?? request.query?.limit ?? 10);
@@ -91,7 +87,7 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Plain array → use query params for page/limit, totalItems = data.length
+        // Plain array
         if (Array.isArray(data)) {
           const page = Math.max(1, Number(request.query?.page ?? 1));
           const limit = Math.max(1, Number(request.query?.limit ?? 10));
@@ -103,7 +99,7 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Null / empty object → return empty array with pagination if expected, or just wrap
+        // Null / undefined
         if (data === null || data === undefined) {
           return {
             status: 'success',
@@ -112,7 +108,7 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Single object — no pagination
+        // Single object
         return {
           status: 'success',
           code: statusCode,

@@ -30,8 +30,12 @@ export class UsersService {
       });
 
       if (existing) {
-        if (email && existing.email === email) throw new ConflictException('Email already in use');
-        if (phone && existing.phone === phone) throw new ConflictException('Phone number already in use');
+        if (email && existing.email === email) {
+          throw new ConflictException('Email already in use');
+        }
+        if (phone && existing.phone === phone) {
+          throw new ConflictException('Phone number already in use');
+        }
       }
     }
 
@@ -72,10 +76,7 @@ export class UsersService {
     return users.map((u) => u.phone).filter(Boolean);
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
