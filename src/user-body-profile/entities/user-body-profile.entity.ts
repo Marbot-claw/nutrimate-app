@@ -22,7 +22,6 @@ export enum ActivityLevel {
   VERY_ACTIVE = 'very_active',
 }
 
-// Transformer to handle PostgreSQL decimal to JS number conversion
 export class ColumnNumericTransformer {
   to(data: number): number {
     return data;

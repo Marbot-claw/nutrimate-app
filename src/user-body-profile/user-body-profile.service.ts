@@ -21,6 +21,7 @@ export class UserBodyProfileService {
     // ensure user exists
     await this.usersService.findOne(userId);
 
+    // One-to-Many: each entry is a new history record
     const profile = this.profileRepository.create({ ...dto, userId });
     return this.profileRepository.save(profile);
   }
@@ -29,16 +30,14 @@ export class UserBodyProfileService {
     // ensure user exists
     await this.usersService.findOne(userId);
 
-    // Optimized: Removed unnecessary 'user' relation since userId is already known
-    return this.profileRepository.find({
+    // Removed unnecessary 'user' relation since userId is already known
+    const profiles = await this.profileRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
     });
+    return profiles;
   }
 
-  /**
-   * Delete a specific body profile entry by its own id.
-   */
   async remove(
     userId: string,
     profileId: string,

@@ -50,7 +50,7 @@ export class AuthService {
 
     return {
       message: 'Login successful',
-      user, // ClassSerializerInterceptor will strip password
+      user,
       access_token: token,
     };
   }

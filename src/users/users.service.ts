@@ -18,23 +18,20 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // Optimized: Check both email and phone in a single query
-    const conditions = [];
-    if (createUserDto.email) conditions.push({ email: createUserDto.email });
-    if (createUserDto.phone) conditions.push({ phone: createUserDto.phone });
+    // Optimized check: One query for both email and phone
+    const existing = await this.usersRepository.findOne({
+      where: [
+        ...(createUserDto.email ? [{ email: createUserDto.email }] : []),
+        ...(createUserDto.phone ? [{ phone: createUserDto.phone }] : []),
+      ],
+    });
 
-    if (conditions.length > 0) {
-      const existing = await this.usersRepository.findOne({
-        where: conditions,
-      });
-
-      if (existing) {
-        if (createUserDto.email && existing.email === createUserDto.email) {
-          throw new ConflictException('Email already in use');
-        }
-        if (createUserDto.phone && existing.phone === createUserDto.phone) {
-          throw new ConflictException('Phone number already in use');
-        }
+    if (existing) {
+      if (createUserDto.email && existing.email === createUserDto.email) {
+        throw new ConflictException('Email already in use');
+      }
+      if (createUserDto.phone && existing.phone === createUserDto.phone) {
+        throw new ConflictException('Phone number already in use');
       }
     }
 
@@ -75,27 +72,29 @@ export class UsersService {
     return users.map((u) => u.phone).filter(Boolean);
   }
 
-  async update(
-    id: string,
-    updateUserDto: UpdateUserDto,
-  ): Promise<User> {
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    // Check for conflicts if email or phone is being updated
-    const conditions = [];
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
-      conditions.push({ email: updateUserDto.email });
-    }
-    if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
-      conditions.push({ phone: updateUserDto.phone });
-    }
+    // Check for conflicts only if email or phone is changing
+    if (
+      (updateUserDto.email && updateUserDto.email !== user.email) ||
+      (updateUserDto.phone && updateUserDto.phone !== user.phone)
+    ) {
+      const existing = await this.usersRepository.findOne({
+        where: [
+          ...(updateUserDto.email && updateUserDto.email !== user.email
+            ? [{ email: updateUserDto.email }]
+            : []),
+          ...(updateUserDto.phone && updateUserDto.phone !== user.phone
+            ? [{ phone: updateUserDto.phone }]
+            : []),
+        ],
+      });
 
-    if (conditions.length > 0) {
-      const existing = await this.usersRepository.findOne({ where: conditions });
-      if (existing) {
+      if (existing && existing.id !== id) {
         if (updateUserDto.email && existing.email === updateUserDto.email) {
           throw new ConflictException('Email already in use');
         }
@@ -110,11 +109,15 @@ export class UsersService {
     }
 
     await this.usersRepository.update(id, updateUserDto);
-    return this.findOne(id);
+    const updated = await this.usersRepository.findOne({ where: { id } });
+    return updated!;
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.findOne(id);
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
     await this.usersRepository.delete(id);
     return { message: `User ${id} deleted successfully` };
   }
