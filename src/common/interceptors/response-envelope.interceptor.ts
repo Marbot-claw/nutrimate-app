@@ -73,13 +73,12 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Handle arrays (auto-pagination meta if requested or just wrap)
+        // Handle arrays
         if (Array.isArray(data)) {
           return {
             status: 'success',
             code: statusCode,
             data,
-            // If it's a plain array, we don't force pagination meta unless it's the paginated shape
           };
         }
 

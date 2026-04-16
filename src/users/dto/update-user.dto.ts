@@ -9,7 +9,7 @@ export class UpdateUserDto {
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ example: '6281234567890', description: 'User phone number without + prefix' })
+  @ApiPropertyOptional({ example: '6281234567890', description: 'User phone number without + prefix (e.g. 6281234567890)' })
   @IsOptional()
   @IsString()
   @Transform(({ value }) => (typeof value === 'string' ? value.replace(/^\+/, '') : value))
