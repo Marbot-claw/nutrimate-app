@@ -26,9 +26,7 @@ export interface ResponseEnvelope<T> {
  * Controllers that support pagination should return:
  *   { items: T[], total: number, page?: number, limit?: number }
  */
-function isPaginatedShape(
-  data: unknown,
-): data is { items: unknown[]; total: number; page?: number; limit?: number } {
+function isPaginatedShape(data: unknown): data is { items: unknown[]; total: number; page?: number; limit?: number } {
   return (
     data !== null &&
     typeof data === 'object' &&
@@ -38,11 +36,7 @@ function isPaginatedShape(
   );
 }
 
-function buildPagination(
-  currentPage: number,
-  limit: number,
-  total: number,
-): PaginationMeta {
+function buildPagination(currentPage: number, limit: number, total: number): PaginationMeta {
   return {
     currentPage,
     itemsPerPage: limit,
@@ -71,12 +65,13 @@ export class ResponseEnvelopeInterceptor<T>
           return data;
         }
 
-        // If data is already wrapped (has status + code), pass through
+        // Avoid double wrapping if data already has the envelope structure
         if (
           data &&
           typeof data === 'object' &&
           'status' in data &&
-          'code' in data
+          'code' in data &&
+          'data' in data
         ) {
           return data;
         }
@@ -93,30 +88,26 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Plain array
+        // Plain array → build pagination based on array length if query params are present
         if (Array.isArray(data)) {
-          return {
-            status: 'success',
-            code: statusCode,
-            data,
-            // For plain arrays without explicit pagination shape, we don't guess pagination
-          };
+          const hasPaginationParams = !!(request.query?.page || request.query?.limit);
+          if (hasPaginationParams) {
+            const page = Math.max(1, Number(request.query?.page ?? 1));
+            const limit = Math.max(1, Number(request.query?.limit ?? 10));
+            return {
+              status: 'success',
+              code: statusCode,
+              data,
+              pagination: buildPagination(page, limit, data.length),
+            };
+          }
         }
 
-        // Null / empty object
-        if (data === null || data === undefined) {
-          return {
-            status: 'success',
-            code: statusCode,
-            data: null as unknown as T,
-          };
-        }
-
-        // Single object
+        // Single object or plain array (without explicit pagination requested)
         return {
           status: 'success',
           code: statusCode,
-          data,
+          data: data ?? [],
         };
       }),
     );

@@ -23,8 +23,8 @@ export class User {
   @Column({ unique: true, nullable: true })
   phone: string;
 
+  @Exclude() // Automatically exclude password from API responses via ClassSerializerInterceptor
   @Column()
-  @Exclude() // Automatically removed from JSON responses by ClassSerializerInterceptor
   password: string;
 
   @Column()

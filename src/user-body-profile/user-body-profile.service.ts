@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserBodyProfile } from './entities/user-body-profile.entity';
 import { CreateUserBodyProfileDto } from './dto/create-user-body-profile.dto';
+import { UpdateUserBodyProfileDto } from './dto/update-user-body-profile.dto';
 import { UsersService } from '../users/users.service';
 
 @Injectable()
@@ -20,7 +21,6 @@ export class UserBodyProfileService {
     // ensure user exists
     await this.usersService.findOne(userId);
 
-    // One-to-Many: each entry is a new history record, no duplicate check
     const profile = this.profileRepository.create({ ...dto, userId });
     return this.profileRepository.save(profile);
   }
@@ -29,12 +29,11 @@ export class UserBodyProfileService {
     // ensure user exists
     await this.usersService.findOne(userId);
 
-    const profiles = await this.profileRepository.find({
+    // Optimized: Removed unnecessary 'user' relation since userId is already known
+    return this.profileRepository.find({
       where: { userId },
-      // Removed relations: ['user'] for better performance as userId is already known
       order: { createdAt: 'DESC' },
     });
-    return profiles;
   }
 
   /**
