@@ -75,6 +75,8 @@ export class ResponseEnvelopeInterceptor<T>
 
         // Handle arrays
         if (Array.isArray(data)) {
+          const page = Math.max(1, Number(request.query?.page ?? 1));
+          const limit = Math.max(1, Number(request.query?.limit ? data.length : 10));
           return {
             status: 'success',
             code: statusCode,

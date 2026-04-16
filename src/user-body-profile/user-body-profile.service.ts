@@ -39,34 +39,6 @@ export class UserBodyProfileService {
   }
 
   /**
-   * Update a specific body profile entry by its own id.
-   * Use GET /users/:userId/body-profile to find the id of the entry to update.
-   */
-  async update(
-    userId: string,
-    profileId: string,
-    dto: UpdateUserBodyProfileDto,
-  ): Promise<UserBodyProfile> {
-    // ensure user exists
-    await this.usersService.findOne(userId);
-
-    const profile = await this.profileRepository.findOne({
-      where: { id: profileId, userId },
-    });
-    if (!profile) {
-      throw new NotFoundException(
-        `Body profile ${profileId} not found for user ${userId}`,
-      );
-    }
-
-    await this.profileRepository.update(profile.id, dto);
-    return this.profileRepository.findOne({
-      where: { id: profile.id },
-      relations: ['user'],
-    }) as Promise<UserBodyProfile>;
-  }
-
-  /**
    * Delete a specific body profile entry by its own id.
    */
   async remove(

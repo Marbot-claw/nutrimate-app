@@ -77,27 +77,6 @@ export class UserBodyProfileController {
   }
 
   /**
-   * PATCH /users/:userId/body-profile/:profileId
-   * Update a specific body profile entry by its id
-   */
-  @Patch(':profileId')
-  @ApiOperation({ summary: 'Update a specific body profile entry by profileId' })
-  @ApiParam({ name: 'userId', type: 'string', format: 'uuid', description: 'User UUID' })
-  @ApiParam({ name: 'profileId', type: 'string', format: 'uuid', description: 'Body profile entry UUID' })
-  @ApiBody({ type: UpdateUserBodyProfileDto })
-  @ApiResponse({ status: 200, description: 'Body profile updated', schema: { example: profileExample } })
-  @ApiResponse({ status: 400, description: 'Validation error' })
-  @ApiResponse({ status: 401, description: 'Unauthorized – JWT token required' })
-  @ApiResponse({ status: 404, description: 'User or body profile entry not found' })
-  update(
-    @Param('userId', ParseUUIDPipe) userId: string,
-    @Param('profileId', ParseUUIDPipe) profileId: string,
-    @Body() dto: UpdateUserBodyProfileDto,
-  ) {
-    return this.service.update(userId, profileId, dto);
-  }
-
-  /**
    * DELETE /users/:userId/body-profile/:profileId
    * Delete a specific body profile entry by its id
    */
