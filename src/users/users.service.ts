@@ -4,11 +4,13 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+
+const BCRYPT_SALT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
@@ -18,38 +20,34 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
-    if (createUserDto.email) {
-      const existing = await this.usersRepository.findOne({
-        where: { email: createUserDto.email },
-      });
-      if (existing) {
-        throw new ConflictException('Email already in use');
-      }
+    const { email, phone, password, ...rest } = createUserDto;
+
+    if (email) {
+      const existing = await this.usersRepository.findOne({ where: { email } });
+      if (existing) throw new ConflictException('Email already in use');
     }
 
-    if (createUserDto.phone) {
-      const existingPhone = await this.usersRepository.findOne({
-        where: { phone: createUserDto.phone },
-      });
-      if (existingPhone) {
-        throw new ConflictException('Phone number already in use');
-      }
+    if (phone) {
+      const existingPhone = await this.usersRepository.findOne({ where: { phone } });
+      if (existingPhone) throw new ConflictException('Phone number already in use');
     }
 
-    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     const user = this.usersRepository.create({
-      ...createUserDto,
+      ...rest,
+      email,
+      phone,
       password: hashedPassword,
     });
 
     const saved = await this.usersRepository.save(user);
-    const { password, ...result } = saved;
+    const { password: _, ...result } = saved;
     return result;
   }
 
   async findAll(): Promise<Omit<User, 'password'>[]> {
     const users = await this.usersRepository.find();
-    return users.map(({ password, ...rest }) => rest as Omit<User, 'password'>);
+    return users.map(({ password: _, ...rest }) => rest);
   }
 
   async findOne(id: string): Promise<Omit<User, 'password'>> {
@@ -57,7 +55,7 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
-    const { password, ...result } = user;
+    const { password: _, ...result } = user;
     return result;
   }
 
@@ -86,40 +84,38 @@ export class UsersService {
       throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existing = await this.usersRepository.findOne({
-        where: { email: updateUserDto.email },
-      });
-      if (existing) {
-        throw new ConflictException('Email already in use');
-      }
+    const { email, phone, password, ...rest } = updateUserDto;
+
+    if (email && email !== user.email) {
+      const existing = await this.usersRepository.findOne({ where: { email } });
+      if (existing) throw new ConflictException('Email already in use');
     }
 
-    if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
-      const existing = await this.usersRepository.findOne({
-        where: { phone: updateUserDto.phone },
-      });
-      if (existing) {
-        throw new ConflictException('Phone number already in use');
-      }
+    if (phone && phone !== user.phone) {
+      const existing = await this.usersRepository.findOne({ where: { phone } });
+      if (existing) throw new ConflictException('Phone number already in use');
     }
 
-    if (updateUserDto.password) {
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
+    const updateData: any = { ...rest };
+    if (email) updateData.email = email;
+    if (phone) updateData.phone = phone;
+    if (password) {
+      updateData.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
     }
 
-    await this.usersRepository.update(id, updateUserDto);
-    const updated = await this.usersRepository.findOne({ where: { id } });
-    const { password, ...result } = updated!;
+    await this.usersRepository.update(id, updateData);
+    
+    // Fetch updated user
+    const updated = await this.usersRepository.findOneBy({ id });
+    const { password: _, ...result } = updated!;
     return result;
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.usersRepository.findOne({ where: { id } });
-    if (!user) {
+    const result = await this.usersRepository.delete(id);
+    if (result.affected === 0) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
-    await this.usersRepository.delete(id);
     return { message: `User ${id} deleted successfully` };
   }
 }
