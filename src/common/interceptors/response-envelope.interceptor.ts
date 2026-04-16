@@ -21,6 +21,15 @@ export interface ResponseEnvelope<T> {
   pagination?: PaginationMeta;
 }
 
+/**
+ * Paginated shape convention:
+ * Controllers that support pagination should return:
+ *   { items: T[], total: number, page?: number, limit?: number }
+ * The interceptor will detect this shape and build proper pagination.
+ *
+ * For plain arrays, pagination is built from query params (page, limit)
+ * with totalItems = data.length (no DB total count available).
+ */
 function isPaginatedShape(data: unknown): data is { items: unknown[]; total: number; page?: number; limit?: number } {
   return (
     data !== null &&
