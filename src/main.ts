@@ -1,5 +1,5 @@
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory, Reflector } from '@nestjs/core';
+import { ValidationPipe, ClassSerializerInterceptor } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -9,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
+  const reflector = app.get(Reflector);
 
   // Global API prefix
   app.setGlobalPrefix('api');
@@ -21,6 +22,9 @@ async function bootstrap() {
       transform: true,
     }),
   );
+
+  // Global serialization interceptor (handles @Exclude, @Expose, etc.)
+  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
 
   // Global response envelope interceptor (wraps all responses consistently)
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());

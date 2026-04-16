@@ -46,12 +46,11 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const { password, ...userWithoutPassword } = user;
     const token = this.generateToken(user.id, user.phone, user.role);
 
     return {
       message: 'Login successful',
-      user: userWithoutPassword,
+      user,
       access_token: token,
     };
   }
