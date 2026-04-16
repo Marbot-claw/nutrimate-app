@@ -59,18 +59,16 @@ export class ResponseEnvelopeInterceptor<T>
           return data;
         }
 
-        // Prevent double wrapping
+        // Prevent double wrapping if data already has the envelope structure
         if (
           data &&
           typeof data === 'object' &&
           'status' in data &&
-          'code' in data &&
-          'data' in data
+          'code' in data
         ) {
           return data;
         }
 
-        // Handle paginated shape
         if (isPaginatedShape(data)) {
           const page = Number(data.page ?? request.query?.page ?? 1);
           const limit = Number(data.limit ?? request.query?.limit ?? 10);
@@ -82,7 +80,6 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Handle plain arrays
         if (Array.isArray(data)) {
           const page = Math.max(1, Number(request.query?.page ?? 1));
           const limit = Math.max(1, Number(request.query?.limit ?? 10));
@@ -94,11 +91,23 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Default envelope
+        if (
+          data === null ||
+          data === undefined ||
+          (typeof data === 'object' && Object.keys(data).length === 0 && !Array.isArray(data))
+        ) {
+          return {
+            status: 'success',
+            code: statusCode,
+            data: [] as any,
+            pagination: buildPagination(1, 10, 0),
+          };
+        }
+
         return {
           status: 'success',
           code: statusCode,
-          data: data ?? [],
+          data,
         };
       }),
     );

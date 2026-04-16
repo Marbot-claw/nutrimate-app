@@ -10,10 +10,8 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // Global API prefix
   app.setGlobalPrefix('api');
 
-  // Enable global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -22,17 +20,14 @@ async function bootstrap() {
     }),
   );
 
-  // Global Interceptors
-  // 1. ClassSerializerInterceptor: Handles @Exclude(), @Expose() in entities
+  // Enable global serialization to handle @Exclude() decorators in entities
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   
-  // 2. ResponseEnvelopeInterceptor: Wraps all responses consistently
+  // Global response envelope interceptor
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
 
-  // Enable CORS
   app.enableCors();
 
-  // Swagger setup
   const config = new DocumentBuilder()
     .setTitle('NutriMate API')
     .setDescription('NutriMate REST API documentation')

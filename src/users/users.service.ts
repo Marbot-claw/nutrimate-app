@@ -18,7 +18,7 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    // Single query to check both email and phone for efficiency
+    // Optimized: Check both email and phone in a single query
     const existing = await this.usersRepository.findOne({
       where: [
         ...(createUserDto.email ? [{ email: createUserDto.email }] : []),
@@ -72,17 +72,35 @@ export class UsersService {
     return users.map((u) => u.phone).filter(Boolean);
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
-
-    if (updateUserDto.email && updateUserDto.email !== user.email) {
-      const existing = await this.findByEmail(updateUserDto.email);
-      if (existing) throw new ConflictException('Email already in use');
+  async update(
+    id: string,
+    updateUserDto: UpdateUserDto,
+  ): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
     }
 
-    if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
-      const existing = await this.findByPhone(updateUserDto.phone);
-      if (existing) throw new ConflictException('Phone number already in use');
+    // Check for unique constraints if email or phone is being updated
+    if (
+      (updateUserDto.email && updateUserDto.email !== user.email) ||
+      (updateUserDto.phone && updateUserDto.phone !== user.phone)
+    ) {
+      const existing = await this.usersRepository.findOne({
+        where: [
+          ...(updateUserDto.email ? [{ email: updateUserDto.email }] : []),
+          ...(updateUserDto.phone ? [{ phone: updateUserDto.phone }] : []),
+        ],
+      });
+
+      if (existing && existing.id !== id) {
+        if (updateUserDto.email && existing.email === updateUserDto.email) {
+          throw new ConflictException('Email already in use');
+        }
+        if (updateUserDto.phone && existing.phone === updateUserDto.phone) {
+          throw new ConflictException('Phone number already in use');
+        }
+      }
     }
 
     if (updateUserDto.password) {

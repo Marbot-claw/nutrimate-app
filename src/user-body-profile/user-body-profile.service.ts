@@ -18,18 +18,15 @@ export class UserBodyProfileService {
     userId: string,
     dto: CreateUserBodyProfileDto,
   ): Promise<UserBodyProfile> {
-    // ensure user exists
     await this.usersService.findOne(userId);
-
     const profile = this.profileRepository.create({ ...dto, userId });
     return this.profileRepository.save(profile);
   }
 
   async findByUserId(userId: string): Promise<UserBodyProfile[]> {
-    // ensure user exists
     await this.usersService.findOne(userId);
 
-    // Removed relations: ['user'] to improve query performance as userId is already known
+    // Removed redundant 'user' relation since userId is already known
     return this.profileRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
@@ -40,7 +37,6 @@ export class UserBodyProfileService {
     userId: string,
     profileId: string,
   ): Promise<{ message: string }> {
-    // ensure user exists
     await this.usersService.findOne(userId);
 
     const profile = await this.profileRepository.findOne({
