@@ -8,6 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { ColumnNumericTransformer } from '../../common/transformers/column-numeric.transformer';
 
 export enum Gender {
   MALE = 'male',
@@ -20,15 +21,6 @@ export enum ActivityLevel {
   MODERATE = 'moderate',
   ACTIVE = 'active',
   VERY_ACTIVE = 'very_active',
-}
-
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
 }
 
 @Entity('user_body_profiles')
