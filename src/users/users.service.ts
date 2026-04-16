@@ -17,10 +17,22 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
   ) {}
 
+  private readonly userPublicFields = [
+    'id',
+    'email',
+    'phone',
+    'name',
+    'role',
+    'isActive',
+    'createdAt',
+    'updatedAt',
+  ] as (keyof User)[];
+
   async create(createUserDto: CreateUserDto): Promise<Omit<User, 'password'>> {
     if (createUserDto.email) {
       const existing = await this.usersRepository.findOne({
         where: { email: createUserDto.email },
+        select: ['id'],
       });
       if (existing) {
         throw new ConflictException('Email already in use');
@@ -30,6 +42,7 @@ export class UsersService {
     if (createUserDto.phone) {
       const existingPhone = await this.usersRepository.findOne({
         where: { phone: createUserDto.phone },
+        select: ['id'],
       });
       if (existingPhone) {
         throw new ConflictException('Phone number already in use');
@@ -43,22 +56,27 @@ export class UsersService {
     });
 
     const saved = await this.usersRepository.save(user);
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...result } = saved;
     return result;
   }
 
   async findAll(): Promise<Omit<User, 'password'>[]> {
-    const users = await this.usersRepository.find();
-    return users.map(({ password, ...rest }) => rest as Omit<User, 'password'>);
+    return (await this.usersRepository.find({
+      select: this.userPublicFields,
+    })) as Omit<User, 'password'>[];
   }
 
   async findOne(id: string): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: this.userPublicFields,
+    });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
-    const { password, ...result } = user;
-    return result;
+    return user as Omit<User, 'password'>;
   }
 
   async findByEmail(email: string): Promise<User | null> {
@@ -81,7 +99,10 @@ export class UsersService {
     id: string,
     updateUserDto: UpdateUserDto,
   ): Promise<Omit<User, 'password'>> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: ['id', 'email', 'phone', 'password'],
+    });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -89,6 +110,7 @@ export class UsersService {
     if (updateUserDto.email && updateUserDto.email !== user.email) {
       const existing = await this.usersRepository.findOne({
         where: { email: updateUserDto.email },
+        select: ['id'],
       });
       if (existing) {
         throw new ConflictException('Email already in use');
@@ -98,6 +120,7 @@ export class UsersService {
     if (updateUserDto.phone && updateUserDto.phone !== user.phone) {
       const existing = await this.usersRepository.findOne({
         where: { phone: updateUserDto.phone },
+        select: ['id'],
       });
       if (existing) {
         throw new ConflictException('Phone number already in use');
@@ -109,13 +132,16 @@ export class UsersService {
     }
 
     await this.usersRepository.update(id, updateUserDto);
-    const updated = await this.usersRepository.findOne({ where: { id } });
-    const { password, ...result } = updated!;
-    return result;
+    
+    // Return updated user
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.usersRepository.findOne({ where: { id } });
+    const user = await this.usersRepository.findOne({
+      where: { id },
+      select: ['id'],
+    });
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
