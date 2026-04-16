@@ -18,13 +18,13 @@ export class User {
   id: string;
 
   @Column({ unique: true, nullable: true })
-  email: string | null;
+  email: string;
 
   @Column({ unique: true, nullable: true })
-  phone: string | null;
+  phone: string;
 
   @Column()
-  @Exclude() // Automatically removed from plain objects by ClassSerializerInterceptor
+  @Exclude() // Automatically removed from JSON responses by ClassSerializerInterceptor
   password: string;
 
   @Column()

@@ -17,31 +17,39 @@ export class UserBodyProfileService {
     userId: string,
     dto: CreateUserBodyProfileDto,
   ): Promise<UserBodyProfile> {
-    // Verify user existence
+    // ensure user exists
     await this.usersService.findOne(userId);
 
+    // One-to-Many: each entry is a new history record, no duplicate check
     const profile = this.profileRepository.create({ ...dto, userId });
     return this.profileRepository.save(profile);
   }
 
   async findByUserId(userId: string): Promise<UserBodyProfile[]> {
-    // Verify user existence
+    // ensure user exists
     await this.usersService.findOne(userId);
 
-    return this.profileRepository.find({
+    const profiles = await this.profileRepository.find({
       where: { userId },
+      // Removed relations: ['user'] for better performance as userId is already known
       order: { createdAt: 'DESC' },
     });
+    return profiles;
   }
 
+  /**
+   * Delete a specific body profile entry by its own id.
+   */
   async remove(
     userId: string,
     profileId: string,
   ): Promise<{ message: string }> {
+    // ensure user exists
+    await this.usersService.findOne(userId);
+
     const profile = await this.profileRepository.findOne({
       where: { id: profileId, userId },
     });
-
     if (!profile) {
       throw new NotFoundException(
         `Body profile ${profileId} not found for user ${userId}`,

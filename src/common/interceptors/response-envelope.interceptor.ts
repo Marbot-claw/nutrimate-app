@@ -21,17 +21,28 @@ export interface ResponseEnvelope<T> {
   pagination?: PaginationMeta;
 }
 
-function isPaginatedShape(data: any): data is { items: any[]; total: number; page?: number; limit?: number } {
+/**
+ * Paginated shape convention:
+ * Controllers that support pagination should return:
+ *   { items: T[], total: number, page?: number, limit?: number }
+ */
+function isPaginatedShape(
+  data: unknown,
+): data is { items: unknown[]; total: number; page?: number; limit?: number } {
   return (
-    data &&
+    data !== null &&
     typeof data === 'object' &&
     'items' in data &&
     'total' in data &&
-    Array.isArray(data.items)
+    Array.isArray((data as { items: unknown[] }).items)
   );
 }
 
-function buildPagination(currentPage: number, limit: number, total: number): PaginationMeta {
+function buildPagination(
+  currentPage: number,
+  limit: number,
+  total: number,
+): PaginationMeta {
   return {
     currentPage,
     itemsPerPage: limit,
@@ -54,14 +65,23 @@ export class ResponseEnvelopeInterceptor<T>
 
     return next.handle().pipe(
       map((data) => {
+        // Only wrap on successful responses (2xx); pass through on errors
         const statusCode: number = response.statusCode ?? 200;
-        
-        // Pass through on errors or if already wrapped
-        if (statusCode >= 400 || (data && data.status && data.code)) {
+        if (statusCode >= 400) {
           return data;
         }
 
-        // Handle paginated responses
+        // If data is already wrapped (has status + code), pass through
+        if (
+          data &&
+          typeof data === 'object' &&
+          'status' in data &&
+          'code' in data
+        ) {
+          return data;
+        }
+
+        // Paginated shape: { items: T[], total: number, page?, limit? }
         if (isPaginatedShape(data)) {
           const page = Number(data.page ?? request.query?.page ?? 1);
           const limit = Number(data.limit ?? request.query?.limit ?? 10);
@@ -73,11 +93,30 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Standard response
+        // Plain array
+        if (Array.isArray(data)) {
+          return {
+            status: 'success',
+            code: statusCode,
+            data,
+            // For plain arrays without explicit pagination shape, we don't guess pagination
+          };
+        }
+
+        // Null / empty object
+        if (data === null || data === undefined) {
+          return {
+            status: 'success',
+            code: statusCode,
+            data: null as unknown as T,
+          };
+        }
+
+        // Single object
         return {
           status: 'success',
           code: statusCode,
-          data: data ?? (Array.isArray(data) ? [] : {}),
+          data,
         };
       }),
     );

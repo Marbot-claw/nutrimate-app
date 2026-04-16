@@ -8,16 +8,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-
-// Transformer to ensure decimal columns are returned as numbers in JS
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
-}
+import { ColumnNumericTransformer } from '../../common/transformers/column-numeric.transformer';
 
 export enum Gender {
   MALE = 'male',

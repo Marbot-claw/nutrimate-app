@@ -18,32 +18,31 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { email, phone, password } = createUserDto;
+    // Optimized: Check both email and phone in a single query if both provided
+    const conditions = [];
+    if (createUserDto.email) conditions.push({ email: createUserDto.email });
+    if (createUserDto.phone) conditions.push({ phone: createUserDto.phone });
 
-    // Check for existing user by email or phone in a single query for better performance
-    const existingUser = await this.usersRepository.findOne({
-      where: [
-        ...(email ? [{ email }] : []),
-        ...(phone ? [{ phone }] : []),
-      ],
-    });
-
-    if (existingUser) {
-      if (email && existingUser.email === email) {
-        throw new ConflictException('Email already in use');
-      }
-      if (phone && existingUser.phone === phone) {
-        throw new ConflictException('Phone number already in use');
+    if (conditions.length > 0) {
+      const existing = await this.usersRepository.findOne({ where: conditions });
+      if (existing) {
+        if (createUserDto.email && existing.email === createUserDto.email) {
+          throw new ConflictException('Email already in use');
+        }
+        if (createUserDto.phone && existing.phone === createUserDto.phone) {
+          throw new ConflictException('Phone number already in use');
+        }
       }
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
       ...createUserDto,
       password: hashedPassword,
     });
 
     return this.usersRepository.save(user);
+    // password stripping is handled by ClassSerializerInterceptor
   }
 
   async findAll(): Promise<User[]> {
@@ -71,40 +70,52 @@ export class UsersService {
       where: { isActive: true },
       select: ['phone'],
     });
-    return users.map((u) => u.phone).filter((p): p is string => !!p);
+    return users.map((u) => u.phone).filter(Boolean);
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
 
-    const { email, phone, password } = updateUserDto;
+    // Check conflicts for email/phone if they are being updated
+    if (
+      (updateUserDto.email && updateUserDto.email !== user.email) ||
+      (updateUserDto.phone && updateUserDto.phone !== user.phone)
+    ) {
+      const conditions = [];
+      if (updateUserDto.email && updateUserDto.email !== user.email)
+        conditions.push({ email: updateUserDto.email });
+      if (updateUserDto.phone && updateUserDto.phone !== user.phone)
+        conditions.push({ phone: updateUserDto.phone });
 
-    // Check conflicts if email or phone is being changed
-    if ((email && email !== user.email) || (phone && phone !== user.phone)) {
-      const existing = await this.usersRepository.findOne({
-        where: [
-          ...(email && email !== user.email ? [{ email }] : []),
-          ...(phone && phone !== user.phone ? [{ phone }] : []),
-        ],
-      });
-
+      const existing = await this.usersRepository.findOne({ where: conditions });
       if (existing) {
-        if (email === existing.email) throw new ConflictException('Email already in use');
-        if (phone === existing.phone) throw new ConflictException('Phone number already in use');
+        if (updateUserDto.email && existing.email === updateUserDto.email) {
+          throw new ConflictException('Email already in use');
+        }
+        if (updateUserDto.phone && existing.phone === updateUserDto.phone) {
+          throw new ConflictException('Phone number already in use');
+        }
       }
     }
 
-    if (password) {
-      updateUserDto.password = await bcrypt.hash(password, 10);
+    if (updateUserDto.password) {
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, 10);
     }
 
     await this.usersRepository.update(id, updateUserDto);
-    return this.findOne(id);
+    const updated = await this.usersRepository.findOne({ where: { id } });
+    return updated!;
   }
 
   async remove(id: string): Promise<{ message: string }> {
-    const user = await this.findOne(id);
-    await this.usersRepository.delete(user.id);
+    const user = await this.usersRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.usersRepository.delete(id);
     return { message: `User ${id} deleted successfully` };
   }
 }

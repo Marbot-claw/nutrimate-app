@@ -9,7 +9,6 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   const configService = app.get(ConfigService);
-  const reflector = app.get(Reflector);
 
   // Global API prefix
   app.setGlobalPrefix('api');
@@ -24,10 +23,12 @@ async function bootstrap() {
   );
 
   // Global interceptors
-  // 1. ClassSerializerInterceptor: Automatically handles @Exclude() and @Expose() in entities/DTOs
-  app.useGlobalInterceptors(new ClassSerializerInterceptor(reflector));
+  // 1. ClassSerializerInterceptor: Automatically handles @Exclude()/@Expose() in entities
   // 2. ResponseEnvelopeInterceptor: Wraps all responses consistently
-  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
+  app.useGlobalInterceptors(
+    new ClassSerializerInterceptor(app.get(Reflector)),
+    new ResponseEnvelopeInterceptor(),
+  );
 
   // Enable CORS
   app.enableCors();

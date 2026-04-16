@@ -6,8 +6,7 @@ import { UserBodyProfile } from '../user-body-profile/entities/user-body-profile
 export const getDatabaseConfig = (
   configService: ConfigService,
 ): TypeOrmModuleOptions => {
-  const nodeEnv = configService.get<string>('NODE_ENV', 'development');
-  const isProduction = nodeEnv === 'production';
+  const isProduction = configService.get<string>('NODE_ENV') === 'production';
 
   return {
     type: 'postgres',
@@ -17,10 +16,11 @@ export const getDatabaseConfig = (
     password: configService.get<string>('DB_PASSWORD', 'postgres'),
     database: configService.get<string>('DB_NAME', 'nutrimate-db'),
     entities: [User, UserBodyProfile],
-    // NEVER use synchronize: true in production - it can cause data loss
-    synchronize: configService.get<string>('DB_SYNC') === 'true' || (!isProduction && configService.get<string>('DB_SYNC') !== 'false'),
+    // Only synchronize in non-production environments to prevent accidental data loss
+    synchronize: isProduction
+      ? false
+      : configService.get<string>('DB_SYNC', 'true') === 'true',
     logging: configService.get<string>('DB_LOGGING', 'true') === 'true',
-    // SSL configuration for production databases (like AWS RDS or Heroku)
-    ssl: isProduction ? { rejectUnauthorized: false } : false,
+    ssl: configService.get<string>('DB_SSL') === 'true' ? { rejectUnauthorized: false } : false,
   };
 };
