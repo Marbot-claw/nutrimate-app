@@ -73,7 +73,7 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Handle arrays (plain arrays don't automatically get fake pagination anymore for clarity)
+        // Handle arrays
         if (Array.isArray(data)) {
           return {
             status: 'success',
