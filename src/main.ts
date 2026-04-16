@@ -22,10 +22,11 @@ async function bootstrap() {
     }),
   );
 
-  // Global ClassSerializerInterceptor (respects @Exclude() and @Expose() in entities)
+  // Global Interceptors
+  // 1. ClassSerializerInterceptor: Handles @Exclude(), @Expose() in entities
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-
-  // Global response envelope interceptor (wraps all responses consistently)
+  
+  // 2. ResponseEnvelopeInterceptor: Wraps all responses consistently
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
 
   // Enable CORS

@@ -9,6 +9,16 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
+// Transformer to handle PostgreSQL decimal to JS number conversion
+export class ColumnNumericTransformer {
+  to(data: number): number {
+    return data;
+  }
+  from(data: string): number {
+    return parseFloat(data);
+  }
+}
+
 export enum Gender {
   MALE = 'male',
   FEMALE = 'female',
@@ -20,15 +30,6 @@ export enum ActivityLevel {
   MODERATE = 'moderate',
   ACTIVE = 'active',
   VERY_ACTIVE = 'very_active',
-}
-
-export class ColumnNumericTransformer {
-  to(data: number): number {
-    return data;
-  }
-  from(data: string): number {
-    return parseFloat(data);
-  }
 }
 
 @Entity('user_body_profiles')

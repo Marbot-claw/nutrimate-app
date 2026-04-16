@@ -21,9 +21,7 @@ export interface ResponseEnvelope<T> {
   pagination?: PaginationMeta;
 }
 
-function isPaginatedShape(
-  data: unknown,
-): data is { items: unknown[]; total: number; page?: number; limit?: number } {
+function isPaginatedShape(data: unknown): data is { items: unknown[]; total: number; page?: number; limit?: number } {
   return (
     data !== null &&
     typeof data === 'object' &&
@@ -33,11 +31,7 @@ function isPaginatedShape(
   );
 }
 
-function buildPagination(
-  currentPage: number,
-  limit: number,
-  total: number,
-): PaginationMeta {
+function buildPagination(currentPage: number, limit: number, total: number): PaginationMeta {
   return {
     currentPage,
     itemsPerPage: limit,
@@ -70,12 +64,13 @@ export class ResponseEnvelopeInterceptor<T>
           data &&
           typeof data === 'object' &&
           'status' in data &&
-          'code' in data
+          'code' in data &&
+          'data' in data
         ) {
           return data;
         }
 
-        // Handle Paginated Shape
+        // Handle paginated shape
         if (isPaginatedShape(data)) {
           const page = Number(data.page ?? request.query?.page ?? 1);
           const limit = Number(data.limit ?? request.query?.limit ?? 10);
@@ -87,13 +82,10 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Handle Array (auto-pagination)
+        // Handle plain arrays
         if (Array.isArray(data)) {
           const page = Math.max(1, Number(request.query?.page ?? 1));
-          const limit = Math.max(
-            1,
-            Number(request.query?.limit ?? data.length || 10),
-          );
+          const limit = Math.max(1, Number(request.query?.limit ?? 10));
           return {
             status: 'success',
             code: statusCode,
@@ -102,20 +94,11 @@ export class ResponseEnvelopeInterceptor<T>
           };
         }
 
-        // Handle Null/Empty
-        if (data === null || data === undefined) {
-          return {
-            status: 'success',
-            code: statusCode,
-            data: null as T,
-          };
-        }
-
-        // Default Single Object
+        // Default envelope
         return {
           status: 'success',
           code: statusCode,
-          data,
+          data: data ?? [],
         };
       }),
     );
